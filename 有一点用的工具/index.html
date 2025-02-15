@@ -1,3 +1,11 @@
+<!--
+ * @Author: yueshengqi
+ * @Date: 2025-02-15 11:40:02
+ * @LastEditors: Do not edit
+ * @LastEditTime: 2025-02-15 21:18:07
+ * @Description: 
+ * @FilePath: \CanvasDrawBoard\canvas画图板\有一点用的工具\index.html
+-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -11,7 +19,15 @@
             box-sizing: border-box;
         }
 
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
         .container {
+            width: 100%;
+            height: 100vh;
             display: flex;
             padding: 20px;
             gap: 20px;
@@ -19,9 +35,13 @@
 
         .drawing-area {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
         .toolbar {
+            flex-shrink: 0;
             margin-bottom: 20px;
             padding: 10px;
             background: #f5f5f5;
@@ -70,6 +90,8 @@
         }
 
         #calibrationCanvas {
+            width: 100%;
+            height: calc(100% - 80px); /* 减去toolbar的高度和margin */
             border: 1px solid #ddd;
             border-radius: 4px;
             background: white;
@@ -80,7 +102,7 @@
             padding: 15px;
             background: #f8f9fa;
             border-radius: 8px;
-            height: calc(100vh - 40px);
+            height: 100%;
             overflow-y: auto;
         }
 
@@ -119,6 +141,7 @@
                 
                 <!-- 功能按钮 -->
                 <button onclick="drawingTools.clear()" style="background: #dc3545">清除</button>
+                <button onclick="drawingTools.undo()" style="background: #ffc107; color: #000;">撤销</button>
                 <div class="control-group">
                     <label for="keepHistory">保留历史:</label>
                     <input type="checkbox" id="keepHistory" checked>
@@ -191,6 +214,26 @@
                 e.target.value = '';
             }
         });
+
+        // 添加窗口大小改变时重设画布大小的函数
+        function resizeCanvas() {
+            const canvas = document.getElementById('calibrationCanvas');
+            const container = canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            
+            // 设置画布的实际像素大小
+            canvas.width = rect.width;
+            canvas.height = rect.height - 80; // 减去toolbar的高度和margin
+            
+            // 重绘内容
+            drawingTools.drawBackground();
+        }
+
+        // 监听窗口大小改变事件
+        window.addEventListener('resize', resizeCanvas);
+
+        // 页面加载完成后初始化画布大小
+        window.addEventListener('load', resizeCanvas);
     </script>
 </body>
 </html>
