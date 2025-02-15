@@ -12,4 +12,6 @@
 
 ## 有一点用的工具
 用es6和函数式编程重写了画图板，并在此基础上增加了图片的缩放和拖拽功能
+![image](https://github.com/user-attachments/assets/01f6fc49-e61d-4a4a-9357-379cb873fc18)
+
 
