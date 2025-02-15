@@ -2,7 +2,7 @@
  * @Author: yueshengqi
  * @Date: 2025-02-15 12:06:22
  * @LastEditors: Do not edit
- * @LastEditTime: 2025-02-15 20:15:11
+ * @LastEditTime: 2025-02-15 20:34:04
  * @Description: 
  * @FilePath: \CanvasDrawBoard\canvas画图板\有一点用的工具\imageHandler.js
  */
@@ -187,5 +187,12 @@ class ImageHandler {
             offsetX: this.config.offsetX,
             offsetY: this.config.offsetY
         };
+    }
+
+    clearBackground() {
+        this.bgPic = null;
+        this.config.scale = 1;
+        this.config.offsetX = 0;
+        this.config.offsetY = 0;
     }
 }

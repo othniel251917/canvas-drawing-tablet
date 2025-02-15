@@ -2,7 +2,7 @@
  * @Author: yueshengqi
  * @Date: 2025-02-15 11:40:18
  * @LastEditors: Do not edit
- * @LastEditTime: 2025-02-15 20:19:58
+ * @LastEditTime: 2025-02-15 20:24:34
  * @Description: 
  * @FilePath: \CanvasDrawBoard\canvas画图板\有一点用的工具\base.js
  */
@@ -83,6 +83,9 @@ class DrawingTools {
         // 添加图形存储数组
         this.shapes = [];
 
+        // 添加保留历史配置
+        this.keepHistory = true;
+
         // 绑定方法到实例
         this.mouseDown = this.mouseDown.bind(this);
         this.mouseMove = this.mouseMove.bind(this);
@@ -127,7 +130,9 @@ class DrawingTools {
     // 清除画布
     clear() {
         this.shapes = []; // 清除存储的图形
-        this.imageHandler.clear();
+        this.imageHandler.clear(); // 清除画布
+        this.imageHandler.clearBackground(); // 清除背景图片
+        addLog("已清除所有内容");
     }
 
     // 开始绘制特定图形
@@ -216,6 +221,11 @@ class DrawingTools {
 
         // 重绘背景
         this.imageHandler.drawBackground();
+        
+        // 如果开启了保留历史，则重绘所有已保存的图形
+        if (this.keepHistory) {
+            this.redrawShapes(this.imageHandler.getTransform());
+        }
 
         // 绘制当前图形
         this.ctx.save();
@@ -327,8 +337,12 @@ class DrawingTools {
     drawTriangle() {
         if (!this.ctrlConfig.startPoint || !this.ctrlConfig.cuPoint) return;
         
-        this.clear();
         this.drawBackground();
+        
+        // 如果开启了保留历史，重绘之前的图形
+        if (this.keepHistory) {
+            this.redrawShapes(this.imageHandler.getTransform());
+        }
         
         const { startPoint, cuPoint } = this.ctrlConfig;
         const thirdPoint = new Point(
@@ -347,8 +361,12 @@ class DrawingTools {
     drawRectangle() {
         if (!this.ctrlConfig.startPoint || !this.ctrlConfig.cuPoint) return;
         
-        this.clear();
         this.drawBackground();
+        
+        // 如果开启了保留历史，重绘之前的图形
+        if (this.keepHistory) {
+            this.redrawShapes(this.imageHandler.getTransform());
+        }
         
         const width = this.ctrlConfig.cuPoint.getX() - this.ctrlConfig.startPoint.getX();
         const height = this.ctrlConfig.cuPoint.getY() - this.ctrlConfig.startPoint.getY();
@@ -364,8 +382,12 @@ class DrawingTools {
     drawCircle() {
         if (!this.ctrlConfig.startPoint || !this.ctrlConfig.cuPoint) return;
         
-        this.clear();
         this.drawBackground();
+        
+        // 如果开启了保留历史，重绘之前的图形
+        if (this.keepHistory) {
+            this.redrawShapes(this.imageHandler.getTransform());
+        }
         
         const radius = Math.sqrt(
             Math.pow(this.ctrlConfig.cuPoint.getX() - this.ctrlConfig.startPoint.getX(), 2) +
@@ -386,8 +408,12 @@ class DrawingTools {
     drawArrow() {
         if (!this.ctrlConfig.startPoint || !this.ctrlConfig.cuPoint) return;
         
-        this.clear();
         this.drawBackground();
+        
+        // 如果开启了保留历史，重绘之前的图形
+        if (this.keepHistory) {
+            this.redrawShapes(this.imageHandler.getTransform());
+        }
         
         const { startPoint, cuPoint } = this.ctrlConfig;
         const headlen = 10;
@@ -413,8 +439,12 @@ class DrawingTools {
     drawParallelogram() {
         if (!this.ctrlConfig.startPoint || !this.ctrlConfig.cuPoint) return;
         
-        this.clear();
         this.drawBackground();
+        
+        // 如果开启了保留历史，重绘之前的图形
+        if (this.keepHistory) {
+            this.redrawShapes(this.imageHandler.getTransform());
+        }
         
         const { startPoint, cuPoint } = this.ctrlConfig;
         const offset = (cuPoint.getX() - startPoint.getX()) / 4;
@@ -431,8 +461,12 @@ class DrawingTools {
     drawTrapezoid() {
         if (!this.ctrlConfig.startPoint || !this.ctrlConfig.cuPoint) return;
         
-        this.clear();
         this.drawBackground();
+        
+        // 如果开启了保留历史，重绘之前的图形
+        if (this.keepHistory) {
+            this.redrawShapes(this.imageHandler.getTransform());
+        }
         
         const { startPoint, cuPoint } = this.ctrlConfig;
         const offset = (cuPoint.getX() - startPoint.getX()) / 4;
@@ -612,5 +646,10 @@ class DrawingTools {
         this.ctx.lineTo(shape.startPoint.x, shape.endPoint.y);
         this.ctx.closePath();
         this.ctx.stroke();
+    }
+
+    // 设置是否保留历史
+    setKeepHistory(keep) {
+        this.keepHistory = keep;
     }
 }

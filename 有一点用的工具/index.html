@@ -119,6 +119,10 @@
                 
                 <!-- 功能按钮 -->
                 <button onclick="drawingTools.clear()" style="background: #dc3545">清除</button>
+                <div class="control-group">
+                    <label for="keepHistory">保留历史:</label>
+                    <input type="checkbox" id="keepHistory" checked>
+                </div>
                 <label for="imageUpload" class="upload-btn">上传背景</label>
                 <input type="file" id="imageUpload" accept="image/*" style="display: none"/>
                 
@@ -149,6 +153,18 @@
         const drawingTools = new DrawingTools();
         drawingTools.init({ id: "calibrationCanvas" });
 
+        // 添加保留历史开关事件监听
+        document.getElementById('keepHistory').addEventListener('change', e => {
+            drawingTools.setKeepHistory(e.target.checked);
+            // 重置画布状态
+            drawingTools.clear();
+            drawingTools.drawBackground();
+            addLog(`${e.target.checked ? '开启' : '关闭'}保留历史功能`);
+        });
+
+        // 初始化时设置保留历史状态
+        drawingTools.setKeepHistory(document.getElementById('keepHistory').checked);
+
         // 颜色选择器事件监听
         document.getElementById('lineColor').addEventListener('change', e => {
             drawingTools.setColor(e.target.value);
@@ -171,6 +187,8 @@
                     addLog(`已上传背景图片: ${file.name}`);
                 };
                 reader.readAsDataURL(file);
+                // 重置 input 的值，这样即使选择相同文件也能触发 change 事件
+                e.target.value = '';
             }
         });
     </script>
