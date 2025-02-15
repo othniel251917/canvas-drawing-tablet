@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Canvas 绘图工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .container {
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .drawing-area {
+            flex: 1;
+        }
+
+        .toolbar {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .toolbar button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toolbar button:hover {
+            background: #0056b3;
+        }
+
+        .toolbar button[style*="background: #dc3545"]:hover {
+            background: #c82333 !important;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .upload-btn {
+            padding: 8px 15px;
+            background: #28a745;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .upload-btn:hover {
+            background: #218838;
+        }
+
+        #calibrationCanvas {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .log-panel {
+            width: 300px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .log-panel h3 {
+            margin-bottom: 15px;
+            color: #343a40;
+        }
+
+        #logContent {
+            font-size: 14px;
+            color: #666;
+        }
+
+        #logContent div {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="drawing-area">
+            <div class="toolbar">
+                <!-- 基础图形工具 -->
+                <button onclick="drawingTools.begin(1)">画笔</button>
+                <button onclick="drawingTools.begin(2)">直线</button>
+                <button onclick="drawingTools.begin(3)">三角形</button>
+                <button onclick="drawingTools.begin(4)">矩形</button>
+                <button onclick="drawingTools.begin(5)">多边形</button>
+                <button onclick="drawingTools.begin(6)">圆形</button>
+                
+                <!-- 特殊图形工具 -->
+                <button onclick="drawingTools.begin(21)">箭头</button>
+                <button onclick="drawingTools.begin(41)">平行四边形</button>
+                <button onclick="drawingTools.begin(42)">梯形</button>
+                
+                <!-- 功能按钮 -->
+                <button onclick="drawingTools.clear()" style="background: #dc3545">清除</button>
+                <label for="imageUpload" class="upload-btn">上传背景</label>
+                <input type="file" id="imageUpload" accept="image/*" style="display: none"/>
+                
+                <!-- 样式控制 -->
+                <div class="control-group">
+                    <label for="lineColor">颜色:</label>
+                    <input type="color" id="lineColor" value="#ff0000">
+                </div>
+                <div class="control-group">
+                    <label for="lineWidth">线宽:</label>
+                    <input type="range" id="lineWidth" min="1" max="20" value="1">
+                    <span id="lineWidthValue">1</span>
+                </div>
+            </div>
+            <canvas id="calibrationCanvas" width="1000" height="1000"></canvas>
+        </div>
+        <div class="log-panel">
+            <h3>操作日志</h3>
+            <div id="logContent"></div>
+        </div>
+    </div>
+
+    <!-- 引入绘图工具脚本 -->
+    <script src="imageHandler.js"></script>
+    <script src="base.js"></script>
+    <script>
+        // 初始化绘图工具
+        const drawingTools = new DrawingTools();
+        drawingTools.init({ id: "calibrationCanvas" });
+
+        // 颜色选择器事件监听
+        document.getElementById('lineColor').addEventListener('change', e => {
+            drawingTools.setColor(e.target.value);
+        });
+
+        // 线宽控制器事件监听
+        document.getElementById('lineWidth').addEventListener('input', e => {
+            const value = e.target.value;
+            document.getElementById('lineWidthValue').textContent = value;
+            drawingTools.setLineWidth(value);
+        });
+
+        // 背景图片上传事件监听
+        document.getElementById('imageUpload').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = event => {
+                    drawingTools.setBgPic(event.target.result);
+                    addLog(`已上传背景图片: ${file.name}`);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+</body>
+</html>
