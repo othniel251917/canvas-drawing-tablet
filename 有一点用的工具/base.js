@@ -2,7 +2,7 @@
  * @Author: yueshengqi
  * @Date: 2025-02-15 11:40:18
  * @LastEditors: Do not edit
- * @LastEditTime: 2025-02-15 12:03:11
+ * @LastEditTime: 2025-02-15 20:19:58
  * @Description: 
  * @FilePath: \CanvasDrawBoard\canvas画图板\有一点用的工具\base.js
  */
@@ -80,6 +80,9 @@ class DrawingTools {
             vertex: []
         };
 
+        // 添加图形存储数组
+        this.shapes = [];
+
         // 绑定方法到实例
         this.mouseDown = this.mouseDown.bind(this);
         this.mouseMove = this.mouseMove.bind(this);
@@ -123,6 +126,7 @@ class DrawingTools {
 
     // 清除画布
     clear() {
+        this.shapes = []; // 清除存储的图形
         this.imageHandler.clear();
     }
 
@@ -161,18 +165,27 @@ class DrawingTools {
         this.imageHandler.drawBackground();
     }
 
-    // 鼠标事件处理方法
+    // 转换鼠标坐标到图片坐标系
+    transformPoint(x, y) {
+        const transform = this.imageHandler.getTransform();
+        return new Point(
+            (x - transform.offsetX) / transform.scale,
+            (y - transform.offsetY) / transform.scale
+        );
+    }
+
     mouseDown(e) {
-        const point = new Point(e.offsetX, e.offsetY);
+        if (e.button === 2) return;
+        
+        // 转换鼠标坐标到图片坐标系
+        const point = this.transformPoint(e.offsetX, e.offsetY);
         
         if (this.ctrlConfig.kind === GraphKind.poly) {
             if (!this.ctrlConfig.isPainting) {
-                // 第一次点击，开始绘制
                 this.ctrlConfig.isPainting = true;
                 this.ctrlConfig.startPoint = point;
                 this.ctrlConfig.vertex = [point];
             } else {
-                // 添加新顶点
                 this.ctrlConfig.vertex.push(point);
             }
             return;
@@ -183,45 +196,35 @@ class DrawingTools {
         
         if (this.ctrlConfig.kind === GraphKind.pen) {
             this.ctx.beginPath();
+            // 在绘制时也需要考虑变换
+            const transform = this.imageHandler.config;
+            this.ctx.save();
+            this.ctx.translate(transform.offsetX, transform.offsetY);
+            this.ctx.scale(transform.scale, transform.scale);
             this.ctx.moveTo(point.getX(), point.getY());
+            this.ctx.restore();
         }
     }
 
     mouseMove(e) {
+        if (this.imageHandler.config.isDragging) return;
         if (!this.ctrlConfig.isPainting) return;
         
-        const point = new Point(e.offsetX, e.offsetY);
+        // 转换鼠标坐标到图片坐标系
+        const point = this.transformPoint(e.offsetX, e.offsetY);
         this.ctrlConfig.cuPoint = point;
 
-        if (this.ctrlConfig.kind === GraphKind.poly) {
-            if (this.ctrlConfig.vertex.length > 0) {
-                this.clear();
-                this.drawBackground();
-                
-                // 绘制完整的多边形
-                this.ctx.beginPath();
-                const startPoint = this.ctrlConfig.vertex[0];
-                this.ctx.moveTo(startPoint.getX(), startPoint.getY());
-                
-                // 绘制已有的顶点
-                for (let p of this.ctrlConfig.vertex) {
-                    this.ctx.lineTo(p.getX(), p.getY());
-                }
-                
-                // 连接到当前鼠标位置
-                this.ctx.lineTo(point.getX(), point.getY());
-                // 闭合回到起点
-                this.ctx.lineTo(startPoint.getX(), startPoint.getY());
-                this.ctx.stroke();
-            }
-            return;
-        }
+        // 重绘背景
+        this.imageHandler.drawBackground();
 
-        // 其他工具的处理逻辑保持不变
-        if (this.ctrlConfig.kind !== GraphKind.pen) {
-            this.clear();
-            this.drawBackground();
-        }
+        // 绘制当前图形
+        this.ctx.save();
+        const transform = this.imageHandler.getTransform();
+        this.ctx.setTransform(
+            transform.scale, 0,
+            0, transform.scale,
+            transform.offsetX, transform.offsetY
+        );
 
         switch (this.ctrlConfig.kind) {
             case GraphKind.pen:
@@ -249,13 +252,24 @@ class DrawingTools {
                 this.drawTrapezoid();
                 break;
         }
+
+        this.ctx.restore();
     }
 
     mouseUp(e) {
-        if (this.ctrlConfig.kind === GraphKind.poly) {
-            // 多边形不在mouseUp时结束绘制
-            return;
+        if (!this.ctrlConfig.isPainting) return;
+        
+        // 保存当前绘制的图形
+        if (this.ctrlConfig.startPoint && this.ctrlConfig.cuPoint) {
+            this.shapes.push({
+                kind: this.ctrlConfig.kind,
+                startPoint: { ...this.ctrlConfig.startPoint },
+                endPoint: { ...this.ctrlConfig.cuPoint },
+                style: { ...this.paintConfig },
+                vertices: this.ctrlConfig.vertex ? [...this.ctrlConfig.vertex] : null
+            });
         }
+        
         this.stopDrawing();
     }
 
@@ -298,11 +312,15 @@ class DrawingTools {
     drawLine() {
         if (!this.ctrlConfig.startPoint || !this.ctrlConfig.cuPoint) return;
         
-        this.clear();
-        this.drawBackground();
         this.ctx.beginPath();
-        this.ctx.moveTo(this.ctrlConfig.startPoint.getX(), this.ctrlConfig.startPoint.getY());
-        this.ctx.lineTo(this.ctrlConfig.cuPoint.getX(), this.ctrlConfig.cuPoint.getY());
+        this.ctx.moveTo(
+            this.ctrlConfig.startPoint.getX(),
+            this.ctrlConfig.startPoint.getY()
+        );
+        this.ctx.lineTo(
+            this.ctrlConfig.cuPoint.getX(),
+            this.ctrlConfig.cuPoint.getY()
+        );
         this.ctx.stroke();
     }
 
@@ -448,9 +466,151 @@ class DrawingTools {
         }
     }
 
-    // 添加重绘图形的方法
-    redrawShapes() {
-        // 这里添加重绘所有绘制图形的逻辑
-        // 可以维护一个图形数组，在这里重绘
+    // 重绘所有图形的方法
+    redrawShapes(transform) {
+        if (!this.shapes.length) return;
+        
+        this.ctx.save();
+        
+        // 使用 setTransform 替代 translate 和 scale
+        this.ctx.setTransform(
+            transform.scale, 0,
+            0, transform.scale,
+            transform.offsetX, transform.offsetY
+        );
+        
+        // 重绘每个保存的图形
+        this.shapes.forEach(shape => {
+            Object.assign(this.ctx, shape.style);
+            
+            switch (shape.kind) {
+                case GraphKind.pen:
+                    // 画笔需要特殊处理
+                    break;
+                case GraphKind.line:
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(shape.startPoint.x, shape.startPoint.y);
+                    this.ctx.lineTo(shape.endPoint.x, shape.endPoint.y);
+                    this.ctx.stroke();
+                    break;
+                case GraphKind.trian:
+                    this.drawSavedTriangle(shape);
+                    break;
+                case GraphKind.rect:
+                    this.drawSavedRectangle(shape);
+                    break;
+                case GraphKind.poly:
+                    if (shape.vertices) {
+                        this.drawSavedPolygon(shape);
+                    }
+                    break;
+                case GraphKind.circle:
+                    this.drawSavedCircle(shape);
+                    break;
+                case GraphKind.arrow:
+                    this.drawSavedArrow(shape);
+                    break;
+                case GraphKind.parallel:
+                    this.drawSavedParallelogram(shape);
+                    break;
+                case GraphKind.trapezoid:
+                    this.drawSavedTrapezoid(shape);
+                    break;
+            }
+        });
+        
+        this.ctx.restore();
+        this.resetStyle();
+    }
+
+    // 添加各种图形的重绘方法
+    drawSavedTriangle(shape) {
+        const thirdPoint = new Point(
+            shape.startPoint.x - (shape.endPoint.x - shape.startPoint.x),
+            shape.endPoint.y
+        );
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(shape.startPoint.x, shape.startPoint.y);
+        this.ctx.lineTo(shape.endPoint.x, shape.endPoint.y);
+        this.ctx.lineTo(thirdPoint.x, thirdPoint.y);
+        this.ctx.closePath();
+        this.ctx.stroke();
+    }
+
+    drawSavedRectangle(shape) {
+        const width = shape.endPoint.x - shape.startPoint.x;
+        const height = shape.endPoint.y - shape.startPoint.y;
+        this.ctx.strokeRect(shape.startPoint.x, shape.startPoint.y, width, height);
+    }
+
+    drawSavedPolygon(shape) {
+        if (!shape.vertices.length) return;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(shape.vertices[0].x, shape.vertices[0].y);
+        
+        for (let i = 1; i < shape.vertices.length; i++) {
+            this.ctx.lineTo(shape.vertices[i].x, shape.vertices[i].y);
+        }
+        
+        this.ctx.closePath();
+        this.ctx.stroke();
+    }
+
+    drawSavedCircle(shape) {
+        const radius = Math.sqrt(
+            Math.pow(shape.endPoint.x - shape.startPoint.x, 2) +
+            Math.pow(shape.endPoint.y - shape.startPoint.y, 2)
+        );
+
+        this.ctx.beginPath();
+        this.ctx.arc(shape.startPoint.x, shape.startPoint.y, radius, 0, 2 * Math.PI);
+        this.ctx.stroke();
+    }
+
+    drawSavedArrow(shape) {
+        const headlen = 10;
+        const dx = shape.endPoint.x - shape.startPoint.x;
+        const dy = shape.endPoint.y - shape.startPoint.y;
+        const angle = Math.atan2(dy, dx);
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(shape.startPoint.x, shape.startPoint.y);
+        this.ctx.lineTo(shape.endPoint.x, shape.endPoint.y);
+        this.ctx.lineTo(
+            shape.endPoint.x - headlen * Math.cos(angle - Math.PI / 6),
+            shape.endPoint.y - headlen * Math.sin(angle - Math.PI / 6)
+        );
+        this.ctx.moveTo(shape.endPoint.x, shape.endPoint.y);
+        this.ctx.lineTo(
+            shape.endPoint.x - headlen * Math.cos(angle + Math.PI / 6),
+            shape.endPoint.y - headlen * Math.sin(angle + Math.PI / 6)
+        );
+        this.ctx.stroke();
+    }
+
+    drawSavedParallelogram(shape) {
+        const offset = (shape.endPoint.x - shape.startPoint.x) / 4;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(shape.startPoint.x + offset, shape.startPoint.y);
+        this.ctx.lineTo(shape.endPoint.x + offset, shape.startPoint.y);
+        this.ctx.lineTo(shape.endPoint.x, shape.endPoint.y);
+        this.ctx.lineTo(shape.startPoint.x, shape.endPoint.y);
+        this.ctx.closePath();
+        this.ctx.stroke();
+    }
+
+    drawSavedTrapezoid(shape) {
+        const offset = (shape.endPoint.x - shape.startPoint.x) / 4;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(shape.startPoint.x + offset, shape.startPoint.y);
+        this.ctx.lineTo(shape.endPoint.x - offset, shape.startPoint.y);
+        this.ctx.lineTo(shape.endPoint.x, shape.endPoint.y);
+        this.ctx.lineTo(shape.startPoint.x, shape.endPoint.y);
+        this.ctx.closePath();
+        this.ctx.stroke();
     }
 }
